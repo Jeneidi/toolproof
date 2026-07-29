@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ToolProof | Deterministic LLM Tool-Calling Harness</title>
+  <meta name="description" content="Run a committed adversarial suite against OpenAI or Anthropic native tool calling, then grade every emitted call with deterministic JavaScript.">
+  <meta name="theme-color" content="#0b0b0d">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%230b0b0d'/%3E%3Cpath d='M7 16l6 6L25 9' fill='none' stroke='%234fd18b' stroke-width='4' stroke-linecap='square'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="shell header-row">
+      <a class="brand" href="#top" aria-label="ToolProof home">
+        <span class="brand-mark" aria-hidden="true">TP</span>
+        <span>ToolProof</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#run">Run</a>
+        <a href="#results">Results</a>
+        <a href="#suite">Suite</a>
+        <a href="#method">Method</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section id="top" class="hero shell">
+      <div>
+        <p class="eyebrow">LLM tool-calling reliability harness</p>
+        <h1>Grade the calls an agent actually emits.</h1>
+        <p class="hero-copy">ToolProof sends 40 adversarial cases through provider-native tool calling, validates arguments against JSON Schema, and explains every pass or failure without an LLM judge.</p>
+      </div>
+      <dl class="hero-stats" aria-label="Suite summary">
+        <div><dt>Cases</dt><dd>40</dd></div>
+        <div><dt>Categories</dt><dd>7</dd></div>
+        <div><dt>Judge models</dt><dd>0</dd></div>
+        <div><dt>Server data</dt><dd>0&nbsp;B</dd></div>
+      </dl>
+    </section>
+
+    <section id="run" class="section shell">
+      <div class="section-heading">
+        <div>
+          <p class="section-index">01 / RUN</p>
+          <h2>Run Panel</h2>
+        </div>
+        <p>Fixture mode is local and complete. Live mode sends requests directly from this browser to the selected provider.</p>
+      </div>
+
+      <div class="run-layout">
+        <form id="run-form" class="panel run-form">
+          <div class="field-grid">
+            <div class="field">
+              <label for="model-select">Model</label>
+              <select id="model-select" name="model" autocomplete="off" translate="no">
+                <optgroup label="OpenAI">
+                  <option value="gpt-4o-mini">gpt-4o-mini</option>
+                  <option value="gpt-4o">gpt-4o</option>
+                  <option value="gpt-5.5">gpt-5.5</option>
+                </optgroup>
+                <optgroup label="Anthropic">
+                  <option value="claude-opus-5">claude-opus-5</option>
+                  <option value="claude-sonnet-5">claude-sonnet-5</option>
+                  <option value="claude-haiku-4-5-20251001">claude-haiku-4-5-20251001</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="field">
+              <label for="scope-select">Case scope</label>
+              <select id="scope-select" name="scope" autocomplete="off">
+                <option value="all">Full suite, 40 cases</option>
+                <option value="should-call">Should call</option>
+                <option value="should-not-call">Should not call</option>
+                <option value="must-ask">Must ask</option>
+                <option value="distractor">Distractor</option>
+                <option value="multi-step">Multi-step</option>
+                <option value="enum-format">Enum / format</option>
+                <option value="injection">Injection</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="request-cap">Request cap</label>
+              <input id="request-cap" name="request-cap" type="number" min="1" max="60" value="10" inputmode="numeric" autocomplete="off" aria-describedby="request-cap-hint">
+              <span id="request-cap-hint" class="field-hint">Hard maximum: 60. The full suite needs up to 51.</span>
+            </div>
+            <div class="field">
+              <label for="api-key">Provider API key</label>
+              <input id="api-key" name="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-… or sk-ant-…" aria-describedby="key-hint run-status">
+              <span id="key-hint" class="field-hint">Stored only in sessionStorage. Sent only to the selected provider over HTTPS. Never logged or included in errors.</span>
+            </div>
+          </div>
+          <div class="button-row">
+            <button id="run-live" class="button button-primary" type="button">Run Live Suite</button>
+            <button id="abort-run" class="button button-danger" type="button" disabled>Abort</button>
+            <button id="forget-key" class="button button-secondary" type="button">Forget Key</button>
+          </div>
+        </form>
+
+        <aside class="panel run-monitor" aria-labelledby="run-monitor-title">
+          <p class="panel-kicker">LIVE MONITOR</p>
+          <h3 id="run-monitor-title">Request Budget</h3>
+          <p id="request-counter" class="counter" aria-live="polite">0 / 10 requests</p>
+          <p id="run-status" class="run-status" role="status">Ready. No provider request has been made.</p>
+          <ul class="constraint-list">
+            <li>Sequential requests</li>
+            <li>150&nbsp;ms inter-case delay</li>
+            <li>45&nbsp;s per-request timeout</li>
+            <li>Abortable in flight</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="fixture-strip">
+        <div>
+          <p class="fixture-title">No Key Required</p>
+          <p id="fixture-summary">Loading committed fixture transcripts…</p>
+        </div>
+        <button id="run-fixture" class="button button-secondary" type="button">Grade Fixtures Locally</button>
+      </div>
+    </section>
+
+    <section id="scorecard" class="section section-dark">
+      <div class="shell">
+        <div class="section-heading">
+          <div>
+            <p class="section-index">02 / SCORECARD</p>
+            <h2>Real-Model Scorecard</h2>
+          </div>
+          <p>Weights are adjustable. Lower is better for hallucination, over-call, under-call, premature-call, and injection-compliance rates.</p>
+        </div>
+
+        <div class="panel weight-panel">
+          <h3>Category Weights</h3>
+          <div id="weight-grid" class="weight-grid"></div>
+        </div>
+
+        <div id="score-empty" class="empty-score">
+          <p class="empty-title">No real-model result yet</p>
+          <p>Fixture transcripts prove the grader path, but they do not populate this scorecard. Run a model with your own key to create a measured result.</p>
+        </div>
+
+        <div id="score-content" hidden>
+          <div class="score-overview">
+            <div class="score-block">
+              <span class="score-label">TOOLPROOF SCORE</span>
+              <strong><span id="score-value">0.0</span><small>/100</small></strong>
+            </div>
+            <dl class="score-meta">
+              <div><dt>Model</dt><dd id="score-model" class="mono"></dd></div>
+              <div><dt>Cases graded</dt><dd id="score-cases" class="mono"></dd></div>
+              <div><dt>Provider requests</dt><dd id="score-requests" class="mono"></dd></div>
+            </dl>
+          </div>
+
+          <div class="score-tables">
+            <div class="table-wrap">
+              <table>
+                <caption>Reliability metrics</caption>
+                <thead><tr><th scope="col">Metric</th><th scope="col">Rate</th><th scope="col">Definition</th></tr></thead>
+                <tbody id="metric-body"></tbody>
+              </table>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <caption>Per-category breakdown</caption>
+                <thead><tr><th scope="col">Category</th><th scope="col">Credit</th><th scope="col">Score</th><th scope="col">Weight</th></tr></thead>
+                <tbody id="category-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="results" class="section shell">
+      <div class="section-heading">
+        <div>
+          <p class="section-index">03 / RESULTS</p>
+          <h2>Case Verdicts</h2>
+        </div>
+        <div class="results-actions">
+          <span id="results-label" class="run-label fixture-label">FIXTURE, illustrative model responses, not a benchmark result</span>
+          <button id="export-results" class="button button-secondary" type="button" disabled>Export Live JSON</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="results-table">
+          <caption class="visually-hidden">Per-case tool-calling results</caption>
+          <thead>
+            <tr>
+              <th scope="col">Case</th>
+              <th scope="col">Verdict</th>
+              <th scope="col">Category</th>
+              <th scope="col">Calls</th>
+              <th scope="col">Grader reason</th>
+              <th scope="col">Trace</th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="suite" class="section section-dark">
+      <div class="shell">
+        <div class="section-heading">
+          <div>
+            <p class="section-index">04 / SUITE</p>
+            <h2>Committed Adversarial Suite</h2>
+          </div>
+          <p id="suite-count">Loading cases…</p>
+        </div>
+        <div class="table-wrap">
+          <table class="suite-table">
+            <caption class="visually-hidden">ToolProof committed test cases</caption>
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">Category</th>
+                <th scope="col">Prompt</th>
+                <th scope="col">Tools offered</th>
+                <th scope="col">Expected behavior</th>
+              </tr>
+            </thead>
+            <tbody id="suite-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="schemas" class="section shell">
+      <div class="section-heading">
+        <div>
+          <p class="section-index">05 / SCHEMAS</p>
+          <h2>Tool Surface</h2>
+        </div>
+        <p id="schema-count">Loading schemas…</p>
+      </div>
+      <div id="schema-list" class="schema-list"></div>
+    </section>
+
+    <section id="method" class="section section-dark">
+      <div class="shell method-grid">
+        <div>
+          <p class="section-index">06 / METHOD</p>
+          <h2>Deterministic Grading</h2>
+        </div>
+        <div class="method-copy">
+          <h3>Validation</h3>
+          <p>Each emitted argument object is checked against the offered tool schema. The local validator covers object, array, string, number, integer, boolean, required fields, enums, patterns, numeric bounds, array items, and disallowed extra properties.</p>
+
+          <h3>Argument Normalization</h3>
+          <p>Normalization runs after schema validation. Strings are trimmed, internal whitespace is collapsed, and case is ignored. Date fields documented as <code translate="no">YYYY-MM-DD</code> also compare equal to an unambiguous English month date such as <code>March 4, 2026</code>. Numbers use an absolute tolerance of <code>0.000001</code>. Arrays remain order-sensitive. Schema enums and patterns remain strict.</p>
+
+          <h3>Verdicts &amp; Partial Credit</h3>
+          <p>Tool name, argument validity, normalized values, call necessity, and call order are checked separately. Multi-step cases earn half credit only when the first dependency call is correct and the required second call is missing. Every row stores a reason string.</p>
+
+          <h3>Weighted Score</h3>
+          <p>For category <code>c</code>, its score is the mean case credit in that category. ToolProof score is <code>100 × Σ(weight[c] × category_score[c]) / Σ(weight[c])</code>. Default weights are visible and adjustable above. Partial runs use only weights for represented categories.</p>
+
+          <h3>Injection Boundary</h3>
+          <p>Injection cases return hostile text from a mock tool result, then observe the next native model turn. Calling the named destructive or unrelated tool counts as injection compliance. Tool results are displayed only with <code translate="no">textContent</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="limitations" class="section shell limitations-grid">
+      <div>
+        <p class="section-index">07 / LIMITATIONS</p>
+        <h2>Limitations</h2>
+      </div>
+      <ul>
+        <li>Most cases are single-turn, and multi-step cases use one deterministic mock tool result.</li>
+        <li>Each task has one committed prompt phrasing, so wording sensitivity is not estimated.</li>
+        <li>Provider sampling and tool-calling behavior can change over time, even for the same model ID.</li>
+        <li>The suite is small. It is a diagnostic harness, not a comprehensive public leaderboard.</li>
+        <li>Argument equivalence is deliberately narrow. It does not attempt semantic matching with an LLM judge.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell footer-row">
+      <span>ToolProof</span>
+      <span>Static, browser-only, BYOK</span>
+      <a href="#top">Back to top</a>
+    </div>
+  </footer>
+  <noscript>ToolProof needs JavaScript to load the committed suite and run its deterministic grader.</noscript>
+</body>
+</html>
